@@ -1,0 +1,845 @@
+openapi: 3.0.3
+info:
+  title: Nginx + ModSecurity Admin Portal API
+  description: Enterprise API for managing Nginx reverse proxies with ModSecurity WAF
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: http://localhost:3000/v1
+    description: Development server
+
+tags:
+  - name: auth
+    description: Authentication operations
+  - name: domains
+    description: Domain and vhost management
+  - name: modsecurity
+    description: ModSecurity configuration
+  - name: ssl
+    description: SSL certificate management
+  - name: logs
+    description: Log viewing and management
+  - name: alerts
+    description: Alert and notification management
+  - name: acl
+    description: Access control lists
+  - name: monitoring
+    description: Performance monitoring
+  - name: users
+    description: User management
+  - name: nodes
+    description: Slave node management
+
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Authenticate user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  format: password
+                  example: secretpassword
+                twoFactorCode:
+                  type: string
+                  example: "123456"
+              required: [username, password, twoFactorCode]
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Authentication failed
+
+  /domains:
+    get:
+      tags: [domains]
+      summary: List all domains
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, error]
+      responses:
+        '200':
+          description: List of domains
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Domain'
+              examples:
+                domains:
+                  value:
+                    - id: "1"
+                      name: "api.example.com"
+                      status: "active"
+                      sslEnabled: true
+                      sslExpiry: "2025-12-31"
+                      modsecEnabled: true
+                      upstreams:
+                        - id: "u1"
+                          host: "10.0.1.10"
+                          port: 8080
+                          weight: 1
+                          maxFails: 3
+                          failTimeout: 30
+                          status: "up"
+                      loadBalancer:
+                        algorithm: "least-conn"
+                        healthCheck:
+                          enabled: true
+                          interval: 10
+                          timeout: 5
+                          path: "/health"
+                      createdAt: "2024-01-15"
+                      lastModified: "2025-03-20"
+    post:
+      tags: [domains]
+      summary: Create new domain
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DomainInput'
+      responses:
+        '201':
+          description: Domain created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Domain'
+
+  /domains/{id}:
+    get:
+      tags: [domains]
+      summary: Get domain by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Domain details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Domain'
+    put:
+      tags: [domains]
+      summary: Update domain
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DomainInput'
+      responses:
+        '200':
+          description: Domain updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Domain'
+    delete:
+      tags: [domains]
+      summary: Delete domain
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Domain deleted
+
+  /modsecurity/global:
+    get:
+      tags: [modsecurity]
+      summary: Get global ModSecurity settings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Global settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+    put:
+      tags: [modsecurity]
+      summary: Update global ModSecurity settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Settings updated
+
+  /modsecurity/rules:
+    get:
+      tags: [modsecurity]
+      summary: List ModSecurity rules
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModSecurityRule'
+              examples:
+                rules:
+                  value:
+                    - id: "r1"
+                      name: "SQL Injection Protection"
+                      category: "SQLi"
+                      enabled: true
+                      description: "Detects SQL injection attempts"
+                    - id: "r2"
+                      name: "XSS Attack Prevention"
+                      category: "XSS"
+                      enabled: true
+                      description: "Blocks cross-site scripting attacks"
+
+  /modsecurity/rules/{id}:
+    patch:
+      tags: [modsecurity]
+      summary: Toggle rule status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Rule updated
+
+  /ssl/certificates:
+    get:
+      tags: [ssl]
+      summary: List SSL certificates
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of certificates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SSLCertificate'
+              examples:
+                certs:
+                  value:
+                    - id: "c1"
+                      domain: "api.example.com"
+                      commonName: "api.example.com"
+                      sans: ["api.example.com", "www.api.example.com"]
+                      issuer: "ZeroSSL"
+                      validFrom: "2024-10-01"
+                      validTo: "2025-12-31"
+                      autoRenew: true
+                      status: "valid"
+    post:
+      tags: [ssl]
+      summary: Add SSL certificate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SSLCertificateInput'
+      responses:
+        '201':
+          description: Certificate added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SSLCertificate'
+
+  /ssl/certificates/{id}:
+    delete:
+      tags: [ssl]
+      summary: Delete SSL certificate
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Certificate deleted
+
+  /logs:
+    get:
+      tags: [logs]
+      summary: Get logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [access, error, modsec, system]
+        - name: domain
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogEntry'
+
+  /alerts:
+    get:
+      tags: [alerts]
+      summary: List alerts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [critical, warning, info]
+        - name: acknowledged
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Alert'
+              examples:
+                alerts:
+                  value:
+                    - id: "a1"
+                      severity: "critical"
+                      message: "Backend server 10.0.4.10:8000 is down"
+                      source: "cdn.assets.com"
+                      timestamp: "2025-03-29T14:35:00Z"
+                      acknowledged: false
+
+  /alerts/{id}/acknowledge:
+    post:
+      tags: [alerts]
+      summary: Acknowledge alert
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Alert acknowledged
+
+  /acl/rules:
+    get:
+      tags: [acl]
+      summary: List ACL rules
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of ACL rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ACLRule'
+    post:
+      tags: [acl]
+      summary: Create ACL rule
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ACLRuleInput'
+      responses:
+        '201':
+          description: Rule created
+
+  /monitoring/metrics:
+    get:
+      tags: [monitoring]
+      summary: Get system metrics
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: metric
+          in: query
+          schema:
+            type: string
+            enum: [cpu, memory, bandwidth, requests]
+        - name: timeframe
+          in: query
+          schema:
+            type: string
+            enum: [1h, 24h, 7d, 30d]
+      responses:
+        '200':
+          description: Metrics data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Metrics'
+
+  /users:
+    get:
+      tags: [users]
+      summary: List users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+    post:
+      tags: [users]
+      summary: Create user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserInput'
+      responses:
+        '201':
+          description: User created
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Domain:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, error]
+        sslEnabled:
+          type: boolean
+        sslExpiry:
+          type: string
+          format: date
+        modsecEnabled:
+          type: boolean
+        upstreams:
+          type: array
+          items:
+            $ref: '#/components/schemas/Upstream'
+        loadBalancer:
+          $ref: '#/components/schemas/LoadBalancer'
+        createdAt:
+          type: string
+          format: date-time
+        lastModified:
+          type: string
+          format: date-time
+
+    DomainInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+        sslEnabled:
+          type: boolean
+        modsecEnabled:
+          type: boolean
+        upstreams:
+          type: array
+          items:
+            $ref: '#/components/schemas/UpstreamInput'
+        loadBalancer:
+          $ref: '#/components/schemas/LoadBalancerInput'
+
+    Upstream:
+      type: object
+      properties:
+        id:
+          type: string
+        host:
+          type: string
+        port:
+          type: integer
+        weight:
+          type: integer
+        maxFails:
+          type: integer
+        failTimeout:
+          type: integer
+        status:
+          type: string
+          enum: [up, down, checking]
+
+    UpstreamInput:
+      type: object
+      required: [host, port]
+      properties:
+        host:
+          type: string
+        port:
+          type: integer
+        weight:
+          type: integer
+          default: 1
+        maxFails:
+          type: integer
+          default: 3
+        failTimeout:
+          type: integer
+          default: 30
+
+    LoadBalancer:
+      type: object
+      properties:
+        algorithm:
+          type: string
+          enum: [round-robin, least-conn, ip-hash]
+        healthCheck:
+          $ref: '#/components/schemas/HealthCheck'
+
+    LoadBalancerInput:
+      type: object
+      properties:
+        algorithm:
+          type: string
+          enum: [round-robin, least-conn, ip-hash]
+        healthCheck:
+          $ref: '#/components/schemas/HealthCheckInput'
+
+    HealthCheck:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        interval:
+          type: integer
+        timeout:
+          type: integer
+        path:
+          type: string
+
+    HealthCheckInput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        interval:
+          type: integer
+        timeout:
+          type: integer
+        path:
+          type: string
+
+    ModSecurityRule:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        enabled:
+          type: boolean
+        description:
+          type: string
+
+    SSLCertificate:
+      type: object
+      properties:
+        id:
+          type: string
+        domain:
+          type: string
+        commonName:
+          type: string
+        sans:
+          type: array
+          items:
+            type: string
+        issuer:
+          type: string
+        validFrom:
+          type: string
+          format: date
+        validTo:
+          type: string
+          format: date
+        autoRenew:
+          type: boolean
+        status:
+          type: string
+          enum: [valid, expiring, expired]
+
+    SSLCertificateInput:
+      type: object
+      required: [domain]
+      properties:
+        domain:
+          type: string
+        certificate:
+          type: string
+        privateKey:
+          type: string
+        chain:
+          type: string
+        autoRenew:
+          type: boolean
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+        severity:
+          type: string
+          enum: [critical, warning, info]
+        message:
+          type: string
+        source:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        acknowledged:
+          type: boolean
+
+    ACLRule:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [whitelist, blacklist]
+        condition:
+          $ref: '#/components/schemas/ACLCondition'
+        action:
+          type: string
+          enum: [allow, deny, challenge]
+        enabled:
+          type: boolean
+
+    ACLRuleInput:
+      type: object
+      required: [name, type, condition, action]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [whitelist, blacklist]
+        condition:
+          $ref: '#/components/schemas/ACLCondition'
+        action:
+          type: string
+          enum: [allow, deny, challenge]
+        enabled:
+          type: boolean
+
+    ACLCondition:
+      type: object
+      properties:
+        field:
+          type: string
+          enum: [ip, geoip, user-agent, url, method, header, rate-limit]
+        operator:
+          type: string
+          enum: [equals, contains, regex]
+        value:
+          type: string
+
+    LogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        level:
+          type: string
+          enum: [error, warn, info, debug]
+        source:
+          type: string
+        message:
+          type: string
+        metadata:
+          type: object
+
+    Metrics:
+      type: object
+      properties:
+        metric:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              value:
+                type: number
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, moderator, viewer]
+        status:
+          type: string
+          enum: [active, inactive]
+        lastLogin:
+          type: string
+          format: date-time
+
+    UserInput:
+      type: object
+      required: [username, email, role]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        role:
+          type: string
+          enum: [admin, moderator, viewer]
