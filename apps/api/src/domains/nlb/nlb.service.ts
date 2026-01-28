@@ -502,6 +502,28 @@ ${serverBlocks.join('\n\n')}
 
     return results;
   }
+
+  /**
+   * Regenerate stream configs for all NLBs (sync use-case)
+   */
+  async regenerateAllStreamConfigs(): Promise<void> {
+    const nlbs = await this.repository.findAllForSync();
+
+    await this.ensureStreamInclude();
+
+    for (const nlb of nlbs) {
+      try {
+        if (nlb.enabled) {
+          await this.generateStreamConfig(nlb);
+          await this.enableStreamConfig(nlb.name);
+        } else {
+          await this.disableStreamConfig(nlb.name);
+        }
+      } catch (error) {
+        logger.error(`Failed to regenerate stream config for ${nlb.name}:`, error);
+      }
+    }
+  }
 }
 
 export const nlbService = new NLBService();
