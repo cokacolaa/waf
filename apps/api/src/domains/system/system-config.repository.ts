@@ -82,7 +82,8 @@ export class SystemConfigRepository {
     masterPort: number,
     masterApiKey: string,
     connected: boolean,
-    connectionError?: string | null
+    connectionError?: string | null,
+    syncInterval?: number
   ): Promise<SystemConfig> {
     const config = await prisma.systemConfig.update({
       where: { id: configId },
@@ -92,6 +93,7 @@ export class SystemConfigRepository {
         masterApiKey,
         connected,
         connectionError: connectionError || null,
+        ...(syncInterval !== undefined && { syncInterval }),
         ...(connected && { lastConnectedAt: new Date() }),
       },
     });
