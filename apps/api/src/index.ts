@@ -11,12 +11,14 @@ import { initializeNginxForSSL } from './utils/nginx-setup';
 import { modSecSetupService } from './domains/modsec/services/modsec-setup.service';
 import { startAlertMonitoring, stopAlertMonitoring } from './domains/alerts/services/alert-monitoring.service';
 import { startSlaveNodeStatusCheck, stopSlaveNodeStatusCheck } from './domains/cluster/services/slave-status-checker.service';
+import { startAutoSync, stopAutoSync } from './domains/system/services/auto-sync.service';
 import { backupSchedulerService } from './domains/backup/services/backup-scheduler.service';
 import { sslSchedulerService } from './domains/ssl/services/ssl-scheduler.service';
 
 const app: Application = express();
 let monitoringTimer: NodeJS.Timeout | null = null;
 let slaveStatusTimer: NodeJS.Timeout | null = null;
+let autoSyncTimer: NodeJS.Timeout | null = null;
 let backupSchedulerTimer: NodeJS.Timeout | null = null;
 let sslSchedulerTimer: NodeJS.Timeout | null = null;
 
@@ -73,6 +75,9 @@ const server = app.listen(PORT, async () => {
   
   // Start slave node status checker (check every minute)
   slaveStatusTimer = startSlaveNodeStatusCheck();
+
+  // Start auto sync service (checks every 5s, sync interval 10-60s)
+  autoSyncTimer = startAutoSync();
   
   // Initialize and start backup scheduler (check every minute)
   try {
@@ -101,6 +106,9 @@ process.on('SIGTERM', () => {
   if (slaveStatusTimer) {
     stopSlaveNodeStatusCheck(slaveStatusTimer);
   }
+  if (autoSyncTimer) {
+    stopAutoSync(autoSyncTimer);
+  }
   if (backupSchedulerTimer) {
     backupSchedulerService.stop(backupSchedulerTimer);
   }
@@ -120,6 +128,9 @@ process.on('SIGINT', () => {
   }
   if (slaveStatusTimer) {
     stopSlaveNodeStatusCheck(slaveStatusTimer);
+  }
+  if (autoSyncTimer) {
+    stopAutoSync(autoSyncTimer);
   }
   if (backupSchedulerTimer) {
     backupSchedulerService.stop(backupSchedulerTimer);
