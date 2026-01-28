@@ -3,6 +3,7 @@ import logger from '../../utils/logger';
 import { SystemConfigRepository } from './system-config.repository';
 import { SystemConfig, NodeMode } from './system.types';
 import { ValidationError, NotFoundError } from '../../shared/errors/app-error';
+import { nodeSyncService } from '../cluster/services/node-sync.service';
 
 /**
  * System Config service - Handles all system configuration business logic
@@ -53,7 +54,8 @@ export class SystemConfigService {
   async connectToMaster(
     masterHost: string,
     masterPort: number,
-    masterApiKey: string
+    masterApiKey: string,
+    syncInterval?: number
   ): Promise<SystemConfig> {
     if (!masterHost || !masterPort || !masterApiKey) {
       throw new ValidationError('Master host, port, and API key are required');
@@ -67,6 +69,12 @@ export class SystemConfigService {
 
     if (config.nodeMode !== 'slave') {
       throw new ValidationError('Cannot connect to master. Node mode must be "slave".');
+    }
+
+    if (syncInterval !== undefined) {
+      if (syncInterval < 10 || syncInterval > 60) {
+        throw new ValidationError('Sync interval must be between 10 and 60 seconds');
+      }
     }
 
     // Test connection to master
@@ -93,7 +101,9 @@ export class SystemConfigService {
         masterHost,
         masterPort,
         masterApiKey,
-        true
+        true,
+        undefined,
+        syncInterval
       );
 
       logger.info('Successfully connected to master', {
@@ -115,7 +125,8 @@ export class SystemConfigService {
         masterPort,
         masterApiKey,
         false,
-        errorMessage
+        errorMessage,
+        syncInterval
       );
 
       logger.error('Failed to connect to master:', {
@@ -322,6 +333,70 @@ export class SystemConfigService {
       slaveHash: slaveCurrentHash,
       changesApplied: importData.changes,
       details: importData.details,
+      lastSyncAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Sync configuration from master (internal, no user token)
+   */
+  async syncWithMasterInternal(): Promise<{
+    imported: boolean;
+    masterHash: string;
+    slaveHash: string | null;
+    changesApplied: number;
+    details?: any;
+    lastSyncAt: string;
+  }> {
+    const config = await this.repository.getSystemConfig();
+
+    if (!config) {
+      throw new NotFoundError('System config not found');
+    }
+
+    if (config.nodeMode !== 'slave') {
+      throw new ValidationError('Cannot sync. Node mode must be "slave".');
+    }
+
+    if (!config.connected || !config.masterHost || !config.masterApiKey) {
+      throw new ValidationError('Not connected to master. Please connect first.');
+    }
+
+    logger.info('[AUTO-SYNC] Starting sync from master...', {
+      masterHost: config.masterHost,
+      masterPort: config.masterPort,
+    });
+
+    const masterUrl = `http://${config.masterHost}:${config.masterPort || 3001}/api/node-sync/export`;
+    const response = await axios.get(masterUrl, {
+      headers: {
+        'X-Slave-API-Key': config.masterApiKey,
+      },
+      timeout: 30000,
+    });
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to export config from master');
+    }
+
+    if (!response.data.data || !response.data.data.hash || !response.data.data.config) {
+      throw new ValidationError('Invalid response structure from master');
+    }
+
+    const { hash: masterHash, config: masterConfig } = response.data.data;
+
+    // Import directly without HTTP auth
+    const importResult = await nodeSyncService.importFromMaster(masterHash, masterConfig);
+
+    // Update last sync hash
+    await this.repository.updateLastSyncHash(config.id, masterHash);
+
+    return {
+      imported: importResult.imported,
+      masterHash,
+      slaveHash: importResult.hash || null,
+      changesApplied: importResult.changes,
+      details: importResult.details,
       lastSyncAt: new Date().toISOString(),
     };
   }
