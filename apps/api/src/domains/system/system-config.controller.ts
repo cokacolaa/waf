@@ -52,12 +52,13 @@ export const updateNodeMode = async (req: AuthRequest, res: Response): Promise<v
  */
 export const connectToMaster = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { masterHost, masterPort, masterApiKey } = req.body;
+    const { masterHost, masterPort, masterApiKey, syncInterval } = req.body;
 
     const config = await systemConfigService.connectToMaster(
       masterHost,
       masterPort,
-      masterApiKey
+      masterApiKey,
+      syncInterval
     );
 
     logger.info('Successfully connected to master', {
