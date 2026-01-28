@@ -15,6 +15,26 @@ import { PaginationMeta } from '../../shared/types/common.types';
  */
 export class NLBRepository {
   /**
+   * Find all NLBs for sync (no pagination)
+   */
+  async findAllForSync(): Promise<NLBWithRelations[]> {
+    const nlbs = await prisma.networkLoadBalancer.findMany({
+      include: {
+        upstreams: {
+          orderBy: { createdAt: 'asc' },
+        },
+        healthChecks: {
+          orderBy: { checkedAt: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return nlbs as NLBWithRelations[];
+  }
+
+  /**
    * Find all NLBs with pagination and filters
    */
   async findAll(
