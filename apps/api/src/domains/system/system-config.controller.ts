@@ -4,6 +4,7 @@ import logger from '../../utils/logger';
 import { SystemConfigService } from './system-config.service';
 import { ResponseUtil } from '../../shared/utils/response.util';
 import { ValidationError, NotFoundError } from '../../shared/errors/app-error';
+import { startAutoSync, stopAutoSync } from './services/auto-sync.service';
 
 const systemConfigService = new SystemConfigService();
 
@@ -33,6 +34,10 @@ export const updateNodeMode = async (req: AuthRequest, res: Response): Promise<v
       userId: req.user?.userId,
       configId: config.id,
     });
+
+    if (nodeMode === 'master') {
+      stopAutoSync();
+    }
 
     ResponseUtil.success(res, config, `Node mode changed to ${nodeMode}`);
   } catch (error: any) {
@@ -66,6 +71,8 @@ export const connectToMaster = async (req: AuthRequest, res: Response): Promise<
       masterHost,
       masterPort,
     });
+
+    startAutoSync();
 
     ResponseUtil.success(res, config, 'Successfully connected to master node');
   } catch (error: any) {
@@ -104,6 +111,8 @@ export const disconnectFromMaster = async (req: AuthRequest, res: Response): Pro
     logger.info('Disconnected from master', {
       userId: req.user?.userId,
     });
+
+    stopAutoSync();
 
     ResponseUtil.success(res, config, 'Disconnected from master node');
   } catch (error: any) {
