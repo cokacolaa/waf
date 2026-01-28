@@ -12,6 +12,7 @@ import { modSecSetupService } from './domains/modsec/services/modsec-setup.servi
 import { startAlertMonitoring, stopAlertMonitoring } from './domains/alerts/services/alert-monitoring.service';
 import { startSlaveNodeStatusCheck, stopSlaveNodeStatusCheck } from './domains/cluster/services/slave-status-checker.service';
 import { startAutoSync, stopAutoSync } from './domains/system/services/auto-sync.service';
+import { SystemConfigService } from './domains/system/system-config.service';
 import { backupSchedulerService } from './domains/backup/services/backup-scheduler.service';
 import { sslSchedulerService } from './domains/ssl/services/ssl-scheduler.service';
 
@@ -76,8 +77,16 @@ const server = app.listen(PORT, async () => {
   // Start slave node status checker (check every minute)
   slaveStatusTimer = startSlaveNodeStatusCheck();
 
-  // Start auto sync service (checks every 5s, sync interval 10-60s)
-  autoSyncTimer = startAutoSync();
+  // Start auto sync service only if already connected to master
+  try {
+    const systemConfigService = new SystemConfigService();
+    const systemConfig = await systemConfigService.getSystemConfig();
+    if (systemConfig.connected && systemConfig.nodeMode === 'slave') {
+      autoSyncTimer = startAutoSync();
+    }
+  } catch (error) {
+    logger.error('Failed to initialize auto sync:', error);
+  }
   
   // Initialize and start backup scheduler (check every minute)
   try {
@@ -106,9 +115,8 @@ process.on('SIGTERM', () => {
   if (slaveStatusTimer) {
     stopSlaveNodeStatusCheck(slaveStatusTimer);
   }
-  if (autoSyncTimer) {
-    stopAutoSync(autoSyncTimer);
-  }
+  stopAutoSync();
+  autoSyncTimer = null;
   if (backupSchedulerTimer) {
     backupSchedulerService.stop(backupSchedulerTimer);
   }
@@ -129,9 +137,8 @@ process.on('SIGINT', () => {
   if (slaveStatusTimer) {
     stopSlaveNodeStatusCheck(slaveStatusTimer);
   }
-  if (autoSyncTimer) {
-    stopAutoSync(autoSyncTimer);
-  }
+  stopAutoSync();
+  autoSyncTimer = null;
   if (backupSchedulerTimer) {
     backupSchedulerService.stop(backupSchedulerTimer);
   }
