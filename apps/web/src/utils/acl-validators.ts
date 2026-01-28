@@ -102,13 +102,6 @@ export function isValidHeaderName(name: string): boolean {
 }
 
 /**
- * Validate rate limit value (e.g., 10r/s, 100r/m)
- */
-export function isValidRateLimit(value: string): boolean {
-  return /^\d+r\/[sm]$/i.test(value.trim());
-}
-
-/**
  * Validate ACL rule value based on field and operator
  */
 export function validateAclValue(
@@ -220,21 +213,6 @@ export function validateAclValue(
       }
       break;
 
-    case 'rate-limit':
-      if (operator !== 'equals') {
-        return { 
-          valid: false, 
-          error: 'Rate limit only supports the "equals" operator' 
-        };
-      }
-      if (!isValidRateLimit(value)) {
-        return { 
-          valid: false, 
-          error: 'Invalid rate limit. Use format like 10r/s or 100r/m' 
-        };
-      }
-      break;
-
     default:
       return { valid: false, error: `Unknown field type: ${field}` };
   }
@@ -276,11 +254,6 @@ export function getValidationHints(field: string, operator: string): string {
       equals: 'Enter in format "Header-Name: value"',
       contains: 'Enter in format "Header-Name: value"',
       regex: 'Enter in format "Header-Name: regex-pattern"'
-    },
-    'rate-limit': {
-      equals: 'Enter rate in format 10r/s or 100r/m',
-      contains: 'Only equals is supported for rate limits',
-      regex: 'Only equals is supported for rate limits'
     }
   };
 
@@ -321,11 +294,6 @@ export function getExampleValue(field: string, operator: string): string {
       equals: 'X-Custom-Header: value',
       contains: 'X-Custom-Header: value',
       regex: 'X-Custom-Header: .*'
-    },
-    'rate-limit': {
-      equals: '10r/s',
-      contains: '10r/s',
-      regex: '10r/s'
     }
   };
 

@@ -109,10 +109,7 @@ export class AclService {
    * Preview Nginx configuration without applying
    */
   async previewNginxConfig(): Promise<string> {
-    const rules = await aclRepository.findEnabled();
-    const aclConfig = await aclNginxService.generateAclConfig(rules);
-    const rateLimitConfig = await aclNginxService.generateRateLimitConfig(rules);
-    return `${aclConfig}\n\n${rateLimitConfig}`;
+    return aclNginxService.generateAclConfig();
   }
 
   /**

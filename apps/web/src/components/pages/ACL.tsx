@@ -44,7 +44,7 @@ function AclRulesTable() {
   const [formData, setFormData] = useState({
     name: "",
     type: "blacklist" as "whitelist" | "blacklist",
-    field: "ip" as "ip" | "geoip" | "user-agent" | "url" | "method" | "header" | "rate-limit",
+    field: "ip" as "ip" | "geoip" | "user-agent" | "url" | "method" | "header",
     operator: "equals" as "equals" | "contains" | "regex",
     value: "",
     action: "deny" as "allow" | "deny" | "challenge",
@@ -80,20 +80,6 @@ function AclRulesTable() {
       setFormData(prev => ({ ...prev, action: 'deny' }));
     }
   }, [formData.type]);
-
-  // Enforce rate limit rule constraints
-  useEffect(() => {
-    if (formData.field !== 'rate-limit') {
-      return;
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      type: 'blacklist',
-      action: prev.action === 'allow' ? 'deny' : prev.action,
-      operator: 'equals'
-    }));
-  }, [formData.field]);
 
   // Reset validation when field or operator changes
   useEffect(() => {
@@ -350,7 +336,7 @@ function AclRulesTable() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {formData.field !== 'rate-limit' && <SelectItem value="allow">Allow</SelectItem>}
+                        <SelectItem value="allow">Allow</SelectItem>
                         <SelectItem value="deny">Deny</SelectItem>
                         <SelectItem value="challenge">Challenge</SelectItem>
                       </SelectContent>
@@ -371,7 +357,6 @@ function AclRulesTable() {
                         <SelectItem value="url">URL</SelectItem>
                         <SelectItem value="method">Method</SelectItem>
                         <SelectItem value="header">Header</SelectItem>
-                        <SelectItem value="rate-limit">Rate Limit</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -383,8 +368,8 @@ function AclRulesTable() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="equals">Equals</SelectItem>
-                        {formData.field !== 'rate-limit' && <SelectItem value="contains">Contains</SelectItem>}
-                        {formData.field !== 'rate-limit' && <SelectItem value="regex">Regex</SelectItem>}
+                        <SelectItem value="contains">Contains</SelectItem>
+                        <SelectItem value="regex">Regex</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

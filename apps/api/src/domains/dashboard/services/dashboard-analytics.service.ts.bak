@@ -501,15 +501,12 @@ export class DashboardAnalyticsService {
         }
       });
 
-      const clampedAttackRequests = Math.min(attackRequests, totalRequests);
-      const normalRequests = Math.max(totalRequests - clampedAttackRequests, 0);
-      const attackPercentage = totalRequests > 0
-        ? (clampedAttackRequests / totalRequests) * 100
-        : 0;
+      const normalRequests = totalRequests - attackRequests;
+      const attackPercentage = totalRequests > 0 ? (attackRequests / totalRequests) * 100 : 0;
 
       return {
         totalRequests,
-        attackRequests: clampedAttackRequests,
+        attackRequests,
         normalRequests,
         attackPercentage: parseFloat(attackPercentage.toFixed(2)),
       };
@@ -589,4 +586,3 @@ export class DashboardAnalyticsService {
 
 // Export singleton instance
 export const dashboardAnalyticsService = new DashboardAnalyticsService();
-

@@ -111,7 +111,7 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarGroup>
           <SidebarGroupLabel className="text-primary font-bold text-lg">
-            {!isCollapsed && 'Nginx Admin'}
+            {!isCollapsed && 'WAF Management'}
           </SidebarGroupLabel>
         </SidebarGroup>
       </SidebarHeader>

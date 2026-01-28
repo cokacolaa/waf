@@ -438,7 +438,6 @@ enum AclField {
   url
   method
   header
-  rate_limit
 }
 
 enum AclOperator {

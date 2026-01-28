@@ -35,7 +35,7 @@ export function validateCreateAclRuleDto(data: any): { isValid: boolean; errors:
   }
 
   // Validate condition field
-  const validFields = ['ip', 'geoip', 'user_agent', 'url', 'method', 'header', 'rate_limit'];
+  const validFields = ['ip', 'geoip', 'user_agent', 'url', 'method', 'header'];
   if (!data.conditionField || typeof data.conditionField !== 'string') {
     errors.push('Condition field is required and must be a string');
   } else if (!validFields.includes(data.conditionField)) {
@@ -87,12 +87,6 @@ export function validateCreateAclRuleDto(data: any): { isValid: boolean; errors:
   }
   if (data.type === 'blacklist' && data.action === 'allow') {
     errors.push('Blacklist rules should use "deny" action, not "allow"');
-  }
-  if (data.conditionField === 'rate_limit' && data.type !== 'blacklist') {
-    errors.push('Rate limit rules must use "blacklist" type');
-  }
-  if (data.conditionField === 'rate_limit' && data.action === 'allow') {
-    errors.push('Rate limit rules must use "deny" or "challenge" action');
   }
 
   return {

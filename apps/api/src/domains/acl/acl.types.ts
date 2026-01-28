@@ -15,8 +15,7 @@ export enum AclField {
   USER_AGENT = 'user_agent',
   URL = 'url',
   METHOD = 'method',
-  HEADER = 'header',
-  RATE_LIMIT = 'rate_limit'
+  HEADER = 'header'
 }
 
 export enum AclOperator {

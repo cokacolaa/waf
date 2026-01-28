@@ -23,4 +23,7 @@ export default defineConfig({
     outDir: "dist",
     sourcemap: false,
   },
+  preview: {
+    allowedHosts: ["waf.techhcm.com"],
+  },
 });

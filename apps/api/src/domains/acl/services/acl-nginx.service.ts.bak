@@ -96,71 +96,6 @@ export class AclNginxService {
         }
       }
 
-      // Generate GeoIP rules
-      if (geoipRules.length > 0) {
-        config += `\n# ===== GeoIP-Based Access Control =====\n\n`;
-        config += `# Requires http_geoip_module (uses $geoip_country_code)\n\n`;
-
-        const geoWhitelists = geoipRules.filter(r => r.type === 'whitelist');
-        const geoBlacklists = geoipRules.filter(r => r.type === 'blacklist');
-
-        if (geoWhitelists.length > 0) {
-          config += `# GeoIP Whitelists (Allow)\n`;
-          config += `set $acl_geoip_whitelisted 0;\n`;
-          for (const rule of geoWhitelists) {
-            const condition = this.buildGeoipCondition(rule);
-            if (!condition) {
-              continue;
-            }
-            config += `# ${rule.name}\n`;
-            config += `if (${condition}) {\n`;
-            config += `    set $acl_geoip_whitelisted 1;\n`;
-            config += `}\n`;
-          }
-          config += `\n`;
-        }
-
-        if (geoBlacklists.length > 0) {
-          config += `# GeoIP Blacklists (Deny)\n`;
-          for (const rule of geoBlacklists) {
-            const condition = this.buildGeoipCondition(rule);
-            if (!condition) {
-              continue;
-            }
-            if (rule.action !== 'deny' && rule.action !== 'challenge') {
-              continue;
-            }
-            config += `# ${rule.name}\n`;
-            if (geoWhitelists.length > 0) {
-              config += `if ($acl_geoip_whitelisted = 0) {\n`;
-              config += `    if (${condition}) {\n`;
-              if (rule.action === 'deny') {
-                config += `        return 403 "Access Denied";\n`;
-              } else if (rule.action === 'challenge') {
-                config += `        return 429 "Too Many Requests - Please try again";\n`;
-              }
-              config += `    }\n`;
-              config += `}\n\n`;
-            } else {
-              config += `if (${condition}) {\n`;
-              if (rule.action === 'deny') {
-                config += `    return 403 "Access Denied";\n`;
-              } else if (rule.action === 'challenge') {
-                config += `    return 429 "Too Many Requests - Please try again";\n`;
-              }
-              config += `}\n\n`;
-            }
-          }
-        }
-
-        if (geoWhitelists.length > 0 && geoBlacklists.length === 0) {
-          config += `# Deny all countries not explicitly whitelisted\n`;
-          config += `if ($acl_geoip_whitelisted = 0) {\n`;
-          config += `    return 403 "Access Denied";\n`;
-          config += `}\n`;
-        }
-      }
-
       // Generate URL-based rules
       if (urlRules.length > 0) {
         config += `\n# ===== URL-Based Access Control =====\n\n`;
@@ -222,41 +157,6 @@ export class AclNginxService {
     }
 
     return directive;
-  }
-
-  /**
-   * Build GeoIP match condition for nginx if statements
-   */
-  private buildGeoipCondition(rule: AclRuleEntity): string | null {
-    const rawValue = rule.conditionValue?.trim();
-    if (!rawValue) {
-      return null;
-    }
-
-    if (rule.conditionOperator === 'equals') {
-      return `$geoip_country_code = "${rawValue}"`;
-    }
-
-    if (rule.conditionOperator === 'regex') {
-      return `$geoip_country_code ~* "${rawValue}"`;
-    }
-
-    if (rule.conditionOperator === 'contains') {
-      const codes = rawValue
-        .split(',')
-        .map(code => code.trim())
-        .filter(Boolean);
-      if (codes.length === 0) {
-        return null;
-      }
-      if (codes.length === 1) {
-        return `$geoip_country_code = "${codes[0]}"`;
-      }
-      const escaped = codes.map(code => code.replace(/[\\.^$|?*+()[\]{}]/g, '\\$&'));
-      return `$geoip_country_code ~* "^(?:${escaped.join('|')})$"`;
-    }
-
-    return null;
   }
 
   /**
@@ -370,4 +270,3 @@ export class AclNginxService {
 
 // Export singleton instance
 export const aclNginxService = new AclNginxService();
-

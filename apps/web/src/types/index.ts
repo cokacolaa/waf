@@ -142,7 +142,7 @@ export interface ACLRule {
   name: string;
   type: 'whitelist' | 'blacklist';
   condition: {
-    field: 'ip' | 'geoip' | 'user-agent' | 'url' | 'method' | 'header' | 'rate-limit';
+    field: 'ip' | 'geoip' | 'user-agent' | 'url' | 'method' | 'header';
     operator: 'equals' | 'contains' | 'regex';
     value: string;
   };
@@ -454,3 +454,4 @@ export interface HealthCheckResult {
   responseTime?: number;
   error?: string;
 }
+

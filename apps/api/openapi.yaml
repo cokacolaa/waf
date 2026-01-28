@@ -767,7 +767,7 @@ components:
       properties:
         field:
           type: string
-          enum: [ip, geoip, user-agent, url, method, header, rate-limit]
+          enum: [ip, geoip, user-agent, url, method, header]
         operator:
           type: string
           enum: [equals, contains, regex]

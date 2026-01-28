@@ -4,7 +4,7 @@ import { ACLRule } from '@/types';
 interface CreateAclRuleDto {
   name: string;
   type: 'whitelist' | 'blacklist';
-  conditionField: 'ip' | 'geoip' | 'user-agent' | 'url' | 'method' | 'header' | 'rate-limit';
+  conditionField: 'ip' | 'geoip' | 'user-agent' | 'url' | 'method' | 'header';
   conditionOperator: 'equals' | 'contains' | 'regex';
   conditionValue: string;
   action: 'allow' | 'deny' | 'challenge';

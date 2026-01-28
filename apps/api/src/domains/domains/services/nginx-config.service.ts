@@ -237,6 +237,7 @@ upstream ${locationUpstreamName}_backend {
       return `
 server {
     listen 80;
+    listen [::]:80;
     server_name ${domain.name};
 
 ${realIpBlock}
@@ -319,7 +320,7 @@ ${accessListsBlock}
       : 'add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;';
     
     // HTTP/2 support (enabled by default, can be disabled)
-    const http2Enabled = domain.http2Enabled !== false;
+    const http2Support = domain.http2Enabled !== false ? ' http2' : '';
     
     // Generate custom locations if configured
     const customLocations = this.generateCustomLocations(domain);
@@ -332,8 +333,8 @@ ${accessListsBlock}
 
     return `
 server {
-    listen 443 ssl;
-    ${http2Enabled ? 'http2 on;' : ''}
+    listen 443 ssl${http2Support};
+    listen [::]:443 ssl${http2Support};
     server_name ${domain.name};
 
 ${realIpBlock}
@@ -457,6 +458,7 @@ ${customLocations}
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+	proxy_hide_header Upgrade;
         
         # WebSocket support
         proxy_set_header Upgrade $http_upgrade;

@@ -2,6 +2,10 @@ import { defineConfig } from 'vitest/config';
 import path from 'path';
 
 export default defineConfig({
+  server: {
+    host: true,
+    allowedHosts: ['waf.techhcm.com']
+  },
   test: {
     globals: true,
     environment: 'node',
