@@ -189,6 +189,18 @@ export class NodeSyncService {
   private async writeModSecFiles(): Promise<void> {
     await fs.mkdir(this.modsecCustomRulesPath, { recursive: true });
 
+    // Clean old custom rule files to avoid duplicate IDs
+    try {
+      const entries = await fs.readdir(this.modsecCustomRulesPath);
+      for (const entry of entries) {
+        if (entry.startsWith('custom_') && (entry.endsWith('.conf') || entry.endsWith('.conf.disabled'))) {
+          await fs.unlink(path.join(this.modsecCustomRulesPath, entry)).catch(() => {});
+        }
+      }
+    } catch (error) {
+      logger.warn('[NODE-SYNC] Failed to clean old ModSecurity custom rules:', error);
+    }
+
     const customRules = await prisma.modSecRule.findMany();
     for (const rule of customRules) {
       const enabledFile = path.join(this.modsecCustomRulesPath, `custom_${rule.id}.conf`);
