@@ -36,11 +36,13 @@ export class AutoSyncService {
     return this.timer;
   }
 
-  stop(timer: NodeJS.Timeout): void {
-    clearInterval(timer);
-    if (this.timer === timer) {
-      this.timer = null;
+  stop(): void {
+    if (!this.timer) {
+      return;
     }
+
+    clearInterval(this.timer);
+    this.timer = null;
   }
 
   private async tick(): Promise<void> {
@@ -59,6 +61,10 @@ export class AutoSyncService {
     }
 
     const interval = config.syncInterval;
+    if (interval <= 0) {
+      return;
+    }
+
     if (interval < 10 || interval > 60) {
       return;
     }
@@ -88,7 +94,7 @@ export function startAutoSync(): NodeJS.Timeout {
   return autoSyncService.start();
 }
 
-export function stopAutoSync(timer: NodeJS.Timeout): void {
+export function stopAutoSync(): void {
   logger.info('[AUTO-SYNC] Stopping auto sync service');
-  autoSyncService.stop(timer);
+  autoSyncService.stop();
 }
